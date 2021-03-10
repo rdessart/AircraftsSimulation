@@ -129,7 +129,6 @@ class Performance():
         Returns:
             bool: True if the phase is still valid, else False
         """
-        self.phase = "T/O C"
         self.__get_Q()
         self.__change_pitch()
         self.__calculate_drag()
@@ -170,13 +169,13 @@ class Performance():
                f"{self.distance_x},{self.d_x},{self.d_y},{self.phase},"\
                f"{self.cd},{self.drag0},{self.gear},{self.flaps},{self.cl},"\
                f"{self.lift},{self.weight},{self.l_w},{self.thrust_percent},"\
-               f"{self.altitude / aero.ft},{self.g}\n"
+               f"{self.altitude / aero.ft},{self.g},{self.pitch_target}\n"
     
     def __get_header(self):
         return "Mass,Altitude,Pressure,Density,Temperature,Cas,Tas,Vy,VS,"\
                "Drag,Thrust,T-D,Pitch,FPA,AOA,Q,AccelerationX,AccelerationY,"\
                "DistanceX,Dx,Dy,Phase,Cd,Cd0,Gear,Flaps,Cl,Lift,Weight,L-W,"\
-               "Thrust Limit,Altitude FT,Gravity\n"
+               "Thrust Limit,Altitude FT,Gravity,Target Pitch\n"
 
 if __name__ == "__main__":
     from openap import WRAP
