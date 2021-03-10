@@ -5,6 +5,22 @@ import inspect
 from openap import Thrust, aero, prop
 
 
+def local_gravity(latitude:float, height:float) -> float:
+    """Calculate local gravity
+
+    Args:
+        latitude (float): latitude
+        height (float): Height above mean sea level (meter)
+
+    Returns:
+        float: the local gravity
+    """
+    sinLat = math.sin(math.radians(latitude))
+    g = 9.780327 * (1 + 0.0053024 * ( sinLat ** 2)\
+        - 0.0000058 * (sinLat ** 2)) - (3.086 * (10 ** -6) * height)
+    return g
+
+
 class Performance():
     """Calulate Instantaneous performance of one object"""
 
@@ -17,8 +33,8 @@ class Performance():
         self.ac_thrust = Thrust(ac=self.aircraft["Name"], 
                            eng=self.aircraft_data["engine"]["default"])
         # Performance Variables (all unit in SI except stated otherwise)
-        # self.mass = self.aircraft_data["limits"]["MTOW"]
-        self.mass = 60_000.0
+        self.mass = self.aircraft_data["limits"]["MTOW"]
+        # self.mass = 60_000.0
         self.altitude = 0.0 
         self.pressure = 0.0
         self.density = 0.0
@@ -29,7 +45,10 @@ class Performance():
         self.vs = 0.0 # Vertical Speed [fpm]
         self.drag = 0.0
         self.thrust = 0.0
+        self.lift = 0.0
+        self.weight = 0.0
         self.t_d = 0.0 # thrust minus drag aka exceed thrust
+        self.l_w = 0.0 # lift minus weight aka exceed lift
         self.pitch = 0.0
         self.fpa = 0.0
         self.aoa = 0.0
@@ -41,7 +60,8 @@ class Performance():
         self.d_y = 0.0 # instantaneous Y distance[m]
         self.phase = "" # Current phase
         self.cd = 0.0
-        self.cd0 = self.aircraft["Cd0"]
+        self.cl = 0.0
+        self.drag0 = self.aircraft["Drag0"]
         self.lift0 = self.aircraft["Lift0"]
         self.gear = False
         self.flaps = 0
@@ -57,7 +77,18 @@ class Performance():
         self.aoa = self.pitch - self.fpa
 
     def __calculate_lift(self):
-        
+        cl_data = self.aircraft["Cl"]
+        self.cl = cl_data['A'] * (self.aoa ** 2)\
+                  + cl_data['B'] * self.aoa\
+                  + cl_data['C']
+        if self.gear:
+            self.cl += self.aircraft["Gear"]["Lift"]
+        if self.flaps > 0:
+            self.cl += self.aircraft["Flaps"][self.flaps-1]["Lift"]
+
+        self.lift = self.lift0\
+                    + (0.5 * self.Q * self.aircraft["WingSpan"] * self.cl)
+
     def __calculate_drag(self):
         cd_data = self.aircraft["Cd"]
 
@@ -66,16 +97,12 @@ class Performance():
                   + cd_data['C']
         
         if self.gear:
-            self.cd += self.aircraft["GearDrag"]
+            self.cd += self.aircraft["Gear"]["Drag"]
         if self.flaps > 0:
-            self.cd += self.aircraft["Flaps"][self.flaps]
+            self.cd += self.aircraft["Flaps"][self.flaps-1]["Drag"]
         
-        self.drag = self.cd0\
+        self.drag = self.drag0\
                     +(0.5 * self.Q * self.aircraft["WingSpan"] * self.cd)
-        
-        # Adding Weight induced drag:
-        # Disabled we need to calulate lift and drag to have coerent values
-        # self.drag += (self.mass * 9.81) * math.sin(math.radians(self.pitch))
 
     def takeoff_climb(self, target_alt: float=457.2) -> bool:
         """Calculate aircraft performance till thrust reduction altitude
@@ -91,11 +118,19 @@ class Performance():
         self.phase = "T/O C"
         self.__get_Q()
         self.__calculate_drag()
+        self.__calculate_lift()
+        self.weight = self.mass *  9.780327
         self.thrust = self.ac_thrust.takeoff(alt=self.altitude, tas=self.tas)
-        self.t_d = self.thrust - self.drag
+        self.t_d = self.thrust - self.drag\
+            - (self.weight * math.sin(math.radians(self.pitch)))
+        self.l_w = self.lift\
+            - (self.weight * math.cos(math.radians(self.pitch)))
         acc = self.t_d / self.mass
         self.acc_x = acc * math.cos(math.radians(self.pitch))
         self.acc_y = acc * math.sin(math.radians(self.pitch))
+        v_acc = self.l_w / self.mass
+        self.acc_y += v_acc * math.cos(math.radians(self.pitch))
+        self.acc_x += v_acc * math.sin(math.radians(self.pitch))
         self.d_x = (self.tas * self.dt) +  0.5 * self.acc_x * (self.dt ** 2)
         self.d_y = (self.v_y * self.dt) + 0.5 * self.acc_y * (self.dt ** 2)
         self.tas += self.acc_x * self.dt
@@ -116,12 +151,13 @@ class Performance():
                f"{self.drag},{self.thrust},{self.t_d},{self.pitch},"\
                f"{self.fpa},{self.aoa},{self.Q},{self.acc_x},{self.acc_y},"\
                f"{self.distance_x},{self.d_x},{self.d_y},{self.phase},"\
-               f"{self.cd},{self.cd0},{self.gear},{self.flaps}\n"
+               f"{self.cd},{self.drag0},{self.gear},{self.flaps},{self.cl},"\
+               f"{self.lift},{self.weight},{self.l_w}\n"
     
     def __get_header(self):
         return "Mass,Altitude,Pressure,Density,Temperature,Cas,Tas,Vy,VS,"\
                "Drag,Thrust,T-D,Pitch,FPA,AOA,Q,AccelerationX,AccelerationY,"\
-               "DistanceX,Dx,Dy,Phase,Cd,Cd0,Gear,Flaps\n"
+               "DistanceX,Dx,Dy,Phase,Cd,Cd0,Gear,Flaps,Cl,Lift,Weight,L-W\n"
 
 if __name__ == "__main__":
     from openap import WRAP
@@ -131,7 +167,10 @@ if __name__ == "__main__":
     a319.cas = a319_wrp.takeoff_speed()["default"]
     a319.tas = aero.cas2tas(a319.cas, a319.altitude)
     a319.pitch = 15.0
-
+    a319.v_y = 2000 * aero.fpm
+    a319.gear = True
+    a319.flaps = 2
+    print(a319.v_y)
     print("Starting")
     for i in range(10):
         a319.takeoff_climb()
