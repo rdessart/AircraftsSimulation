@@ -42,6 +42,7 @@ class Performance():
         self.phase = "" # Current phase
         self.cd = 0.0
         self.cd0 = self.aircraft["Cd0"]
+        self.lift0 = self.aircraft["Lift0"]
         self.gear = False
         self.flaps = 0
         self.output.write(self.__get_header())
@@ -55,6 +56,8 @@ class Performance():
         self.fpa = math.degrees(math.atan2(self.d_y, self.d_x))
         self.aoa = self.pitch - self.fpa
 
+    def __calculate_lift(self):
+        
     def __calculate_drag(self):
         cd_data = self.aircraft["Cd"]
 
