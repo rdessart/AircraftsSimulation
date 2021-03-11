@@ -1,3 +1,4 @@
+from math import inf
 from openap import WRAP, aero
 import matplotlib.pyplot as plt
 import performance
@@ -41,8 +42,8 @@ def main():
         if a319.gear and (a319.altitude / aero.ft) > 100.0:
             a319.gear = False
 
-        # if a319.flaps > 0 and (a319.cas / aero.kts) > 210.0:
-        #     a319.flaps = 0
+        if a319.flaps > 0 and (a319.cas / aero.kts) > 210.0:
+            a319.flaps = 0
 
         if (a319.altitude / aero.ft) > 1500.0 and\
            (a319.altitude / aero.ft) < 1550.0 and a319.phase != "THR_RED":
@@ -65,7 +66,23 @@ def main():
                 a319.pitch_target += 6.0 * a319.dt
             elif output < a319.pitch_target:
                 a319.pitch_target -= 6.0 * a319.dt
-            # a319.pitch_target = (output - a319.pitch_target) / (3.0 * a319.dt)
+
+        if a319.flaps == 0 and round(a319.cas / aero.kts) > 250:
+            if a319.phase != "CLIMB_1":
+                a319.phase = "CLIMB_1"
+                Kp = 1.5
+                Ki = 0.1
+                Kd = 0.0
+                pid = PIDController(Kp, Ki, Kd, 250.0 * aero.kts, 1/60)
+                pid.max_val = 15
+                pid.reveverse = True
+            output = pid.compute(a319.cas)
+
+        if a319.phase == "ACC" or a319.phase == "CLIMB_1":
+            if output > a319.pitch_target:
+                a319.pitch_target += 6.0 * a319.dt
+            elif output < a319.pitch_target:
+                a319.pitch_target -= 6.0 * a319.dt
             alts.append(int(round(a319.altitude / aero.kts)))
             vs.append(int(a319.vs))
             cas.append(a319.cas / aero.kts)
@@ -74,28 +91,11 @@ def main():
             fd_pitchs.append(a319.pitch_target)
             i += 1
 
-        # if a319.flaps == 0 and round(a319.cas / aero.kts) > 250:
-        #     a319.phase = "CLIMB_1"
-        #     # print(a319.altitude / aero.ft, round(a319.cas / aero.kts))
-        #     Kp = 0.3
-        #     Ki = 0.005
-        #     Kd = 0.1
-        #     pid = PIDController(Kp, Ki, Kd, 0.0, 1/60)
-        #     pid.max_val = 15
-        #     pid.target = 250.0 * aero.kts
-        #     pid.reveverse = True  # as we want a positive result
-        #     # if error is negative
-        #     alts.append(int(round(a319.altitude / aero.kts)))
-        #     vs.append(int(a319.vs))
-        #     a319.pitch_target = pid.compute(a319.cas)
-        #     cas.append(a319.cas / aero.kts)
-        #     pitchs.append(a319.pitch)
-        #     times.append(i / 60.0)
-        #     i += 1
-
-    # print(f"Cas Start  = {cas_start / aero.kts}")
     print(f"Cas End  = {a319.cas / aero.kts}")
-    # print("Finished")
+    draw(times, vs, alts, cas, pitchs, fd_pitchs)
+
+
+def draw(times, vs, alts, cas, pitchs, fd_pitchs):
     fig, (ax1, ax2, ax3, ax4, ax5) = plt.subplots(5, sharex=True)
     ax1.plot(times, vs)
     ax1.set(ylabel='VS(fpm)')
