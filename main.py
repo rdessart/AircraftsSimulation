@@ -1,4 +1,3 @@
-import math
 from openap import WRAP, aero
 import matplotlib.pyplot as plt
 import performance
@@ -7,14 +6,13 @@ from pid_controller import PIDController
 
 def main():
     # PID Setup
-    Kp = 0.5
+    Kp = 0.2
     Ki = 0.0
     Kd = 0.2
     pid = PIDController(Kp, Ki, Kd, 0.0, 1/60)
     a319 = performance.Performance("A319")
     a319_wrp = WRAP(ac="A319")
     # print(a319_wrp.takeoff_speed())
-    cas_start = a319_wrp.takeoff_speed()["maximum"]
     a319.cas = a319_wrp.takeoff_speed()["maximum"]
     a319.mass = 60_000.00
     a319.tas = aero.cas2tas(a319.cas, a319.altitude)
@@ -24,7 +22,7 @@ def main():
     a319.pitch_target = 15.0
     # simulation varibale
     a319.phase = "TO_CLIMB"
-    print("Starting")
+    # print("Starting")
     pitchs = []
     alts = []
     vs = []
@@ -36,12 +34,12 @@ def main():
     # vs_min = target_vs * 0.95
     # vs_max = target_vs * 1.50
     # END
-    while a319.altitude < 32_000.0 * aero.ft:
+    while a319.altitude < 20_000.0 * aero.ft:
         a319.run()
         # When passing 100ft RA, the gear is up
         if a319.gear and (a319.altitude / aero.ft) > 100.0:
             a319.gear = False
-        
+
         if a319.flaps > 0 and (a319.cas / aero.kts) > 210.0:
             a319.flaps = 0
 
@@ -70,23 +68,28 @@ def main():
             times.append(i / 60.0)
             i += 1
 
-        # if a319.flaps == 0 and round(a319.cas / aero.kts) >= 250:
-        #     a319.phase = "CLIMB_1"
-        #     pid.target = 250.0 * aero.kts
-        #     pid.reveverse = True  # as we want a positive result
-        #     # if error is negative
+        if a319.flaps == 0 and round(a319.cas / aero.kts) > 250:
+            a319.phase = "CLIMB_1"
+            # print(a319.altitude / aero.ft, round(a319.cas / aero.kts))
+            Kp = 0.3
+            Ki = 0.005
+            Kd = 0.1
+            pid = PIDController(Kp, Ki, Kd, 0.0, 1/60)
+            pid.max_val = 15
+            pid.target = 250.0 * aero.kts
+            pid.reveverse = True  # as we want a positive result
+            # if error is negative
+            alts.append(int(round(a319.altitude / aero.kts)))
+            vs.append(int(a319.vs))
+            a319.pitch_target = pid.compute(a319.cas)
+            cas.append(a319.cas / aero.kts)
+            pitchs.append(a319.pitch)
+            times.append(i / 60.0)
+            i += 1
 
-        #     alts.append(int(round(a319.altitude / aero.kts)))
-        #     vs.append(int(a319.vs))
-        #     a319.pitch_target = pid.compute(a319.cas)
-        #     cas.append(a319.cas / aero.kts)
-        #     pitchs.append(a319.pitch)
-        #     times.append(i / 60.0)
-        #     i += 1
-
-    print(f"Cas Start  = {cas_start / aero.kts}")
+    # print(f"Cas Start  = {cas_start / aero.kts}")
     print(f"Cas End  = {a319.cas / aero.kts}")
-    print("Finished")
+    # print("Finished")
     fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, sharex=True)
     ax1.plot(times, vs)
     ax1.set(ylabel='VS(fpm)')
