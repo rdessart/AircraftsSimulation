@@ -10,7 +10,7 @@ def main():
     Ki = 0.0
     Kd = 0.2
     pid = PIDController(Kp, Ki, Kd, 0.0, 1/60)
-    a319 = performance.Performance("A319")
+    a319 = performance.Performance("A319", False)
     a319_wrp = WRAP(ac="A319")
     # print(a319_wrp.takeoff_speed())
     a319.cas = a319_wrp.takeoff_speed()["maximum"]
