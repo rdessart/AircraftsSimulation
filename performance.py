@@ -24,8 +24,8 @@ def local_gravity(latitude: float, height: float) -> float:
 class Performance():
     """Calulate Instantaneous performance of one object"""
 
-    def __init__(self, aircraft_name):
-        self.output = open("output.csv", 'w+')
+    def __init__(self, aircraft_name, write_output: bool = False):      
+        self.write = write_output
         # General Variables
         self.dt = 1.0 / 60.0  # simulation timestep 60 per seconds
         aircraft_txt = open(f"./data/{aircraft_name}.json", 'r').read()
@@ -68,8 +68,10 @@ class Performance():
         self.gear = False
         self.flaps = 0
         self.pitch_target = 0.0
-        self.output.write(self.__get_header())
-        self.output.flush()
+        if self.write:
+            self.output = open("output.csv", 'w+')
+            self.output.write(self.__get_header())
+            self.output.flush()
 
     def __get_Q(self):
         self.pressure, self.density, self.temp = aero.atmos(self.altitude)
@@ -158,9 +160,9 @@ class Performance():
         self.distance_x += self.d_x
         self.vs = self.v_y / aero.fpm
         self. __calculate_FPA()
-        # write output
-        self.output.write(str(self))
-        self.output.flush()
+        if self.write:
+            self.output.write(str(self))
+            self.output.flush()
 
     def __str__(self):
         return f"{self.mass},{self.altitude},{self.pressure},{self.density},"\
