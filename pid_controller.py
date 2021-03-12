@@ -54,7 +54,7 @@ class PIDController2():
     """Updated version of PIDController"""
     def __init__(self, Kp: float = 0.0, Ki: float = 0.0, Kd: float = 0.0,
                  limitMin: float = 0.0, limitMax: float = 0.0,
-                 tau: float = 0.0, dp: float = 0.0):
+                 tau: float = 0.0, dt: float = 0.0):
         """Version 2 of PIDController, with updated math
         Args:
             Kp (float, optional): gain for proportional. Defaults to 0.0.
