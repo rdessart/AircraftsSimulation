@@ -71,7 +71,7 @@ class PIDController2():
         self.limitMax = limitMax
         self.limitMin = limitMin
         self.tau = tau
-        self.dp = dp
+        self.dt = dt
         self.use_low_pass_filter = False
         self.use_kick_avoidance = False
 
@@ -79,6 +79,7 @@ class PIDController2():
         self._differenciator = 0.0
         self._previousError = 0.0
         self._previousMeasurement = 0.0
+        self._error = 0.0
 
     def compute(self, target: float, 
                 measurement: float, dt: float = None) -> float:
@@ -99,24 +100,25 @@ class PIDController2():
             dt = self.dt
         limitIntMax = 0.0
         limitIntMin = 0.0
-        error = target - measurement
-        proportional = error * self.kp
-        self._integrator += 0.5 * self.ki * dt * (error + self._previousError)
-        if self.limitMax > self._integrator:
+        self._error = target - measurement
+        proportional = self._error * self.kp
+        self._integrator += 0.5 * self.ki * dt *\
+            (self._error + self._previousError)
+        if self.limitMax > proportional:
             limitIntMax = self.limitMax - proportional
-        elif self.limitMin < self._integrator:
+        elif self.limitMin < proportional:
             limitIntMin = self.limitMin - proportional
         
-        if self._integrator > self.limitMax:
-            self._integrator = self.limitMax
-        elif self._integrator < self.limitMin:
-            self._integrator = self.limitMin
+        if self._integrator > limitIntMax:
+            self._integrator = limitIntMax
+        elif self._integrator < limitIntMin:
+            self._integrator =limitIntMin
         
         if self.use_kick_avoidance:
             differenciator_delta = measurement - self._previousMeasurement
         else:
-            differenciator_delta = error - self._previousError
-        self._differenciator = (2.0 * self.Kd * differenciator_delta)
+            differenciator_delta = self._error - self._previousError
+        self._differenciator = (2.0 * self.kd * differenciator_delta)
         if self.use_low_pass_filter:
             self._differenciator += ((2.0 * self.tau * dt)
                                     * self._differenciator)\
@@ -126,6 +128,19 @@ class PIDController2():
             output = self.limitMax
         elif output < self.limitMin:
             output =  self.limitMin
-        self._previousError = error
+        self._previousError = self._error
         self._previousMeasurement = measurement
         return output
+
+    def get_kpe(self):
+        return self.kp * self._error
+
+    def get_kie(self):
+        return self._integrator
+
+    def get_kde(self):
+        return self._differenciator
+
+    # def get_kie(self):
+    #     return self.ki * self._integrator
+    
