@@ -56,9 +56,9 @@ def main():
                 # Kp = 0.0000100
                 # Ki = 0.0000030
                 # Kd = 0.0000500
-                Kp = 0.0005
+                Kp = 0.04
                 Ki = 0.03
-                Kd = 0.1
+                Kd = 0.50
                 pid = PIDController2(Kp, Ki, Kd, -15.0, 15.0,1.0 ,dt=1/60)
                 i = 0
                 a319.phase = "ACC"
@@ -95,11 +95,11 @@ def main():
             i += 1
 
     print(f"Cas End  = {a319.cas / aero.kts}")
-    draw(times, vs, alts, cas, pitchs, fd_pitchs, kpe, kie, kde, outputs)
+    draw(times, vs, alts, cas, pitchs, fd_pitchs, kpe, kie, kde)
 
 
-def draw(times, vs, alts, cas, pitchs, fd_pitchs, kpe, kde, kie, outputs):
-    fig, (ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8, ax9) \
+def draw(times, vs, alts, cas, pitchs, fd_pitchs, kpe, kde, kie):
+    fig, (ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8) \
         = plt.subplots(8, sharex=True)
     ax1.plot(times, vs)
     ax1.set(ylabel='VS(fpm)')

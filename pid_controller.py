@@ -136,10 +136,10 @@ class PIDController2():
         return self.kp * self._error
 
     def get_kie(self):
-        return self._integrator
+        return self._integrator * self.ki  
 
     def get_kde(self):
-        return self._differenciator
+        return self._differenciator * self.kd
 
     # def get_kie(self):
     #     return self.ki * self._integrator
