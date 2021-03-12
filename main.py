@@ -2,7 +2,7 @@ from math import inf
 from openap import WRAP, aero
 import matplotlib.pyplot as plt
 import performance
-from pid_controller import PIDController2, butter_lowpass_filter
+from pid_controller import PIDController2
 
 
 def main():
@@ -56,7 +56,7 @@ def main():
                 # Kp = 0.0000100
                 # Ki = 0.0000030
                 # Kd = 0.0000500
-                Kp = 0.05
+                Kp = 0.0005
                 Ki = 0.03
                 Kd = 0.1
                 pid = PIDController2(Kp, Ki, Kd, -15.0, 15.0,1.0 ,dt=1/60)
