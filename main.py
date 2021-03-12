@@ -2,15 +2,11 @@ from math import inf
 from openap import WRAP, aero
 import matplotlib.pyplot as plt
 import performance
-from pid_controller import PIDController
+from pid_controller import PIDController2, butter_lowpass_filter
 
 
 def main():
     # PID Setup
-    
-    
-    
-    
     a319 = performance.Performance("A319", False)
     a319_wrp = WRAP(ac="A319")
     # print(a319_wrp.takeoff_speed())
@@ -30,13 +26,18 @@ def main():
     vs = []
     cas = []
     times = []
+    kpe = []
+    kie = []
+    kde = []
     i = 0
+    outputs = []
+    outputs2 = []
     # # DEBUG AP Variables
     # target_vs = 1000.0
     # vs_min = target_vs * 0.95
     # vs_max = target_vs * 1.50
     # END
-    while a319.altitude < 15_000.0 * aero.ft:
+    while a319.altitude < 10_000.0 * aero.ft:
         a319.run()
         # When passing 100ft RA, the gear is up
         if a319.gear and (a319.altitude / aero.ft) > 100.0:
@@ -52,51 +53,54 @@ def main():
 
         if (a319.altitude / aero.ft) > 3000.0 and a319.phase != "CLIMB_1":
             if a319.phase != "ACC":
-                Kp = 0.5
-                Ki = 0.1
-                Kd = 1.5
-                pid = PIDController(Kp, Ki, Kd, 1000.0, 1/60)
+                # Kp = 0.0000100
+                # Ki = 0.0000030
+                # Kd = 0.0000500
+                Kp = 0.05
+                Ki = 0.03
+                Kd = 0.1
+                pid = PIDController2(Kp, Ki, Kd, -15.0, 15.0,1.0 ,dt=1/60)
                 i = 0
-                a319.pitch_target = 10.0
                 a319.phase = "ACC"
-                pid.max_val = 15
-                pid.reveverse = False
-            output = pid.compute(a319.vs)
-            if output > a319.pitch_target:
-                a319.pitch_target += 6.0 * a319.dt
-            elif output < a319.pitch_target:
-                a319.pitch_target -= 6.0 * a319.dt
+            # a319.pitch_target = pid.compute(1000.0,a319.vs)
+            outputs2.append(pid.compute(1000.0,a319.vs))
+            if len(outputs2) > 15:
+                a319.pitch_target = sum(outputs2) / len(outputs2)
+                outputs2.remove(outputs2[0])
+            #debug
+            if a319.tas > aero.cas2tas(250 * aero.kts, a319.altitude):
+                a319.tas = aero.cas2tas(250 * aero.kts, a319.altitude)
 
-        if a319.flaps == 0 and round(a319.cas / aero.kts) > 250:
-            if a319.phase != "CLIMB_1":
-                a319.phase = "CLIMB_1"
-                Kp = 1.5
-                Ki = 0.1
-                Kd = 0.0
-                pid = PIDController(Kp, Ki, Kd, 250.0 * aero.kts, 1/60)
-                pid.max_val = 15
-                pid.reveverse = True
-            output = pid.compute(a319.cas)
+        # if a319.flaps == 0 and round(a319.cas / aero.kts) > 250:
+        #     if a319.phase != "CLIMB_1":
+        #         a319.phase = "CLIMB_1"
+        #         Kp = 1.5
+        #         Ki = 0.1
+        #         Kd = 0.0
+        #         pid = PIDController(Kp, Ki, Kd, 250.0 * aero.kts, 1/60)
+        #         pid.max_val = 15
+        #         pid.reveverse = True
+        #     output = pid.compute(a319.cas)
 
         if a319.phase == "ACC" or a319.phase == "CLIMB_1":
-            if output > a319.pitch_target:
-                a319.pitch_target += 6.0 * a319.dt
-            elif output < a319.pitch_target:
-                a319.pitch_target -= 6.0 * a319.dt
             alts.append(int(round(a319.altitude / aero.kts)))
             vs.append(int(a319.vs))
             cas.append(a319.cas / aero.kts)
             pitchs.append(a319.pitch)
             times.append(i / 60.0)
             fd_pitchs.append(a319.pitch_target)
+            kpe.append(pid.get_kpe())
+            kie.append(pid.get_kie())
+            kde.append(pid.get_kde())
             i += 1
 
     print(f"Cas End  = {a319.cas / aero.kts}")
-    draw(times, vs, alts, cas, pitchs, fd_pitchs)
+    draw(times, vs, alts, cas, pitchs, fd_pitchs, kpe, kie, kde, outputs)
 
 
-def draw(times, vs, alts, cas, pitchs, fd_pitchs):
-    fig, (ax1, ax2, ax3, ax4, ax5) = plt.subplots(5, sharex=True)
+def draw(times, vs, alts, cas, pitchs, fd_pitchs, kpe, kde, kie, outputs):
+    fig, (ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8, ax9) \
+        = plt.subplots(8, sharex=True)
     ax1.plot(times, vs)
     ax1.set(ylabel='VS(fpm)')
     ax2.plot(times, alts)
@@ -107,6 +111,12 @@ def draw(times, vs, alts, cas, pitchs, fd_pitchs):
     ax4.set(ylabel='Pitch')
     ax5.plot(times, fd_pitchs)
     ax5.set(ylabel='FD Y')
+    ax6.plot(times, kpe)
+    ax6.set(ylabel='KPE')
+    ax7.plot(times, kie)
+    ax7.set(ylabel='KIE')
+    ax8.plot(times, kde)
+    ax8.set(ylabel='KDE')
     plt.grid()
     plt.show()
 
