@@ -1,4 +1,3 @@
-from math import inf
 from openap import WRAP, aero
 import matplotlib.pyplot as plt
 import performance
@@ -18,7 +17,7 @@ def main():
     a319.flaps = 1
     a319.pitch_target = 15.0
     # simulation varibale
-    a319.phase = "TO_CLIMB"
+    a319.phase = 1
     # print("Starting")
     pitchs = []
     fd_pitchs = []
@@ -31,7 +30,6 @@ def main():
     kde = []
     i = 0
     outputs = []
-    outputs2 = []
     # # DEBUG AP Variables
     # target_vs = 1000.0
     # vs_min = target_vs * 0.95
@@ -47,42 +45,42 @@ def main():
             a319.flaps = 0
 
         if (a319.altitude / aero.ft) > 1500.0 and\
-           (a319.altitude / aero.ft) < 1550.0 and a319.phase != "THR_RED":
+           (a319.altitude / aero.ft) < 1550.0 and a319.phase < 2:
             a319.thrust_percent = 0.8  # Thrust reduction altitud
-            a319.phase = "THR_RED"
+            a319.phase = 2
 
-        if (a319.altitude / aero.ft) > 3000.0 and a319.phase != "CLIMB_1":
-            if a319.phase != "ACC":
-                # Kp = 0.0000100
-                # Ki = 0.0000030
-                # Kd = 0.0000500
-                Kp = 0.04
-                Ki = 0.03
-                Kd = 0.50
-                pid = PIDController2(Kp, Ki, Kd, -15.0, 15.0,1.0 ,dt=1/60)
+        if (a319.altitude / aero.ft) > 3000.0 and a319.phase < 4:
+            if a319.phase != 3:
+                Kp = 0.007
+                Ki = 0.0003
+                Kd = 0.09
+                pid = PIDController2(Kp, Ki, Kd, -15.0, 15.0, 1.0, dt=1/60)
                 i = 0
-                a319.phase = "ACC"
+                a319.phase = 3
             # a319.pitch_target = pid.compute(1000.0,a319.vs)
-            outputs2.append(pid.compute(1000.0,a319.vs))
-            if len(outputs2) > 15:
-                a319.pitch_target = sum(outputs2) / len(outputs2)
-                outputs2.remove(outputs2[0])
-            #debug
-            if a319.tas > aero.cas2tas(250 * aero.kts, a319.altitude):
-                a319.tas = aero.cas2tas(250 * aero.kts, a319.altitude)
+            outputs.append(pid.compute(1000.0, a319.vs))
+            if len(outputs) > 15:
+                a319.pitch_target = sum(outputs) / len(outputs)
+                outputs.remove(outputs[0])
+            # # debug
+            # if a319.tas > aero.cas2tas(250 * aero.kts, a319.altitude):
+            #     a319.tas = aero.cas2tas(250 * aero.kts, a319.altitude)
 
-        # if a319.flaps == 0 and round(a319.cas / aero.kts) > 250:
-        #     if a319.phase != "CLIMB_1":
-        #         a319.phase = "CLIMB_1"
-        #         Kp = 1.5
-        #         Ki = 0.1
-        #         Kd = 0.0
-        #         pid = PIDController(Kp, Ki, Kd, 250.0 * aero.kts, 1/60)
-        #         pid.max_val = 15
-        #         pid.reveverse = True
-        #     output = pid.compute(a319.cas)
+        if a319.flaps == 0 and round(a319.cas / aero.kts) > 250:
+            if a319.phase != 4:
+                a319.phase = 4
+                Kp = 4.0
+                Ki = 0.0
+                Kd = 4.0
+                pid = PIDController2(Kp, Ki, Kd, -15.0, 15.0, 1.0, dt=1/60)
+                # pid.max_val = 15
+                pid.reveverse = True
+            a319.pitch_target = -1 * pid.compute(250.0 * aero.kts, a319.cas)
 
-        if a319.phase == "ACC" or a319.phase == "CLIMB_1":
+        # if a319.phase == 3 or a319.phase == 4:
+        if a319.phase == 4:
+            print(f"{a319.phase} : {a319.altitude / aero.ft:02f}",
+                  f"- {a319.vs:02f} - {a319.cas / aero.kts}")
             alts.append(int(round(a319.altitude / aero.kts)))
             vs.append(int(a319.vs))
             cas.append(a319.cas / aero.kts)
