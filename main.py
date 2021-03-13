@@ -30,12 +30,9 @@ def main():
     kde = []
     i = 0
     outputs = []
-    # # DEBUG AP Variables
-    # target_vs = 1000.0
-    # vs_min = target_vs * 0.95
-    # vs_max = target_vs * 1.50
-    # END
-    while a319.altitude < 10_000.0 * aero.ft:
+    distance_0 = 0.0
+    run = True
+    while run:
         a319.run()
         # When passing 100ft RA, the gear is up
         if a319.gear and (a319.altitude / aero.ft) > 100.0:
@@ -73,12 +70,38 @@ def main():
                 Ki = 0.0
                 Kd = 4.0
                 pid = PIDController2(Kp, Ki, Kd, -15.0, 15.0, 1.0, dt=1/60)
-                # pid.max_val = 15
-                pid.reveverse = True
             a319.pitch_target = -1 * pid.compute(250.0 * aero.kts, a319.cas)
 
-        # if a319.phase == 3 or a319.phase == 4:
-        if a319.phase == 4:
+        if a319.altitude + (a319.v_y * 30) >= 33_000 * aero.ft:
+            if a319.phase != 5:
+                a319.phase = 5
+                Kp = 4.0
+                Ki = 0.0
+                Kd = 4.0
+                pid = PIDController2(Kp, Ki, Kd, -15.0, 15.0, 1.0, dt=1/60)
+
+            target_vs = ((33_000 * aero.ft) - a319.altitude) / 60.0
+            a319.pitch_target = pid.compute(target_vs, a319.v_y)
+
+            if a319.tas > aero.mach2tas(0.78, a319.altitude):
+                a319.tas = aero.mach2tas(0.78, a319.altitude)
+
+        if 32_900 <= a319.altitude / aero.ft <= 33_000:
+            if a319.phase != 6:
+                a319.phase = 6
+                distance_0 = a319.distance_x
+                Kp = 4.0
+                Ki = 1.0
+                Kd = 1.0
+                pid = PIDController2(Kp, Ki, Kd, -15.0, 15.0, 1.0, dt=1/60)
+
+            a319.pitch_target = pid.compute(a319.altitude, 33_000 * aero.ft)
+            if distance_0 / aero.nm >= 100.0:
+                run = False
+            if a319.tas > aero.mach2tas(0.78, a319.altitude):
+                a319.tas = aero.mach2tas(0.78, a319.altitude)
+        # OUTPUTS:
+        if a319.phase >= 3:
             print(f"{a319.phase} : {a319.altitude / aero.ft:02f}",
                   f"- {a319.vs:02f} - {a319.cas / aero.kts}")
             alts.append(int(round(a319.altitude / aero.kts)))
@@ -87,9 +110,9 @@ def main():
             pitchs.append(a319.pitch)
             times.append(i / 60.0)
             fd_pitchs.append(a319.pitch_target)
-            kpe.append(pid.get_kpe())
-            kie.append(pid.get_kie())
-            kde.append(pid.get_kde())
+            # kpe.append(pid.get_kpe())
+            # kie.append(pid.get_kie())
+            # kde.append(pid.get_kde())
             i += 1
 
     print(f"Cas End  = {a319.cas / aero.kts}")
@@ -97,24 +120,26 @@ def main():
 
 
 def draw(times, vs, alts, cas, pitchs, fd_pitchs, kpe, kde, kie):
-    fig, (ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8) \
-        = plt.subplots(8, sharex=True)
+    # fig, (ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8) \
+    fig, (ax1, ax2, ax3) \
+        = plt.subplots(3, sharex=True)
+    #   = plt.subplots(8, sharex=True)
     ax1.plot(times, vs)
     ax1.set(ylabel='VS(fpm)')
     ax2.plot(times, alts)
     ax2.set(ylabel='ATL')
     ax3.plot(times, cas)
-    ax3.set(ylabel='CAS')
-    ax4.plot(times, pitchs)
-    ax4.set(ylabel='Pitch')
-    ax5.plot(times, fd_pitchs)
-    ax5.set(ylabel='FD Y')
-    ax6.plot(times, kpe)
-    ax6.set(ylabel='KPE')
-    ax7.plot(times, kie)
-    ax7.set(ylabel='KIE')
-    ax8.plot(times, kde)
-    ax8.set(ylabel='KDE')
+    # ax3.set(ylabel='CAS')
+    # ax4.plot(times, pitchs)
+    # ax4.set(ylabel='Pitch')
+    # ax5.plot(times, fd_pitchs)
+    # ax5.set(ylabel='FD Y')
+    # ax6.plot(times, kpe)
+    # ax6.set(ylabel='KPE')
+    # ax7.plot(times, kie)
+    # ax7.set(ylabel='KIE')
+    # ax8.plot(times, kde)
+    # ax8.set(ylabel='KDE')
     plt.grid()
     plt.show()
 

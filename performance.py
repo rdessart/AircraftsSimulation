@@ -108,6 +108,7 @@ class Performance():
 
         self.drag = self.drag0\
             + (0.5 * self.Q * self.aircraft["WingSpan"] * self.cd)
+        self.drag *= 1.3 #  DEBUG
 
     def __change_pitch(self) -> None:
         """
@@ -139,6 +140,7 @@ class Performance():
         self.g = local_gravity(50.0, self.altitude)
         self.weight = self.mass * self.g
         self.thrust = self.ac_thrust.takeoff(alt=self.altitude, tas=self.tas)
+        self.thrust *= 0.9
         self.thrust *= self.thrust_percent
         self.t_d = self.thrust - self.drag\
             - (self.weight * math.sin(math.radians(self.pitch)))
