@@ -24,7 +24,7 @@ def local_gravity(latitude: float, height: float) -> float:
 class Performance():
     """Calulate Instantaneous performance of one object"""
 
-    def __init__(self, aircraft_name, write_output: bool = False):      
+    def __init__(self, aircraft_name, write_output: bool = False):
         self.write = write_output
         # General Variables
         self.dt = 1.0 / 60.0  # simulation timestep 60 per seconds
@@ -108,7 +108,7 @@ class Performance():
 
         self.drag = self.drag0\
             + (0.5 * self.Q * self.aircraft["WingSpan"] * self.cd)
-        self.drag *= 1.3 #  DEBUG
+        self.drag *= 1.3  # DEBUG
 
     def __change_pitch(self) -> None:
         """
