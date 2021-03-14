@@ -68,6 +68,7 @@ class Performance():
         self.gear = False
         self.flaps = 0
         self.pitch_target = 0.0
+        self.pitch_rate_of_change = 3.0  # rate of change of the pitch [°/sec]
         if self.write:
             self.output = open("output.csv", 'w+')
             self.output.write(self.__get_header())
@@ -114,9 +115,9 @@ class Performance():
         if self.pitch == self.pitch_target:
             return
         if self.pitch > self.pitch_target:
-            self.pitch -= 3.0 * self.dt
+            self.pitch -= self.pitch_rate_of_change * self.dt
         elif self.pitch < self.pitch_target:
-            self.pitch += 3.0 * self.dt
+            self.pitch += self.pitch_rate_of_change * self.dt
 
     def run(self) -> bool:
         """Calculate aircraft performance till thrust reduction altitude

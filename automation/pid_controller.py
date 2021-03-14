@@ -81,10 +81,10 @@ class PIDController2():
         self._previousMeasurement = 0.0
         self._error = 0.0
 
-    def compute(self, target: float, 
+    def compute(self, target: float,
                 measurement: float, dt: float = None) -> float:
         """Calculate output through PID interface using gain value set via
-        self.Kp, self.Ki, self.Kd 
+        self.Kp, self.Ki, self.Kd
 
         Args:
             target (float): target value to be reached
@@ -93,7 +93,7 @@ class PIDController2():
                                  uses self.dt. Defaults to None.
 
         Returns:
-            float: The output of the PID clamped to 
+            float: The output of the PID clamped to
                    [self.limitMax, self.limitMax]
         """
         if dt is None:
@@ -108,12 +108,12 @@ class PIDController2():
             limitIntMax = self.limitMax - proportional
         elif self.limitMin < proportional:
             limitIntMin = self.limitMin - proportional
-        
+
         if self._integrator > limitIntMax:
             self._integrator = limitIntMax
         elif self._integrator < limitIntMin:
-            self._integrator =limitIntMin
-        
+            self._integrator = limitIntMin
+
         if self.use_kick_avoidance:
             differenciator_delta = measurement - self._previousMeasurement
         else:
@@ -121,13 +121,13 @@ class PIDController2():
         self._differenciator = (2.0 * self.kd * differenciator_delta)
         if self.use_low_pass_filter:
             self._differenciator += ((2.0 * self.tau * dt)
-                                    * self._differenciator)\
+                                     * self._differenciator)\
                                  / (2.0 * self.tau * dt)
         output = proportional + self._integrator + self._differenciator
         if output > self.limitMax:
             output = self.limitMax
         elif output < self.limitMin:
-            output =  self.limitMin
+            output = self.limitMin
         self._previousError = self._error
         self._previousMeasurement = measurement
         return output
@@ -136,11 +136,10 @@ class PIDController2():
         return self.kp * self._error
 
     def get_kie(self):
-        return self._integrator * self.ki  
+        return self._integrator * self.ki
 
     def get_kde(self):
         return self._differenciator * self.kd
 
     # def get_kie(self):
     #     return self.ki * self._integrator
-    

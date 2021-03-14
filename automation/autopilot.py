@@ -1,0 +1,130 @@
+"""Autopilot"""
+from .pid_controller import PIDController2
+
+
+class Autopilot():
+    """Autopilot description"""
+    speed_hold = 1
+    vs_hold = 2
+    alt_aquire = 3
+    alt_hold = 4
+
+    def __init__(self):
+        """Initalise the Autopilot.
+        Args:
+            aircraft (Performance): aircraft bound the autopilot
+        """
+        # self.aircraft = aircraft
+        self.pid = None
+        self.active_mode = 0
+        self.pitch_limit = {'MIN': -15, 'MAX': 15}
+        self.ap_dt = 1.0 / 60.0
+        self.target = 0
+        self.target_alt = 0.0
+
+    def SpeedHold(self, target_speed: float, target_alt: float = None) -> None:
+        """
+        Adjust the pitch to keep current speed
+        Args:
+            target_speed ([float]): required speed, in meter/seconds
+            target_alt (float): the target altitude in meters [default=None]
+        """
+        if self.active_mode != Autopilot.speed_hold:
+            self.active_mode = Autopilot.speed_hold
+            Kp = 2.0
+            Ki = 0.1
+            Kd = 2.0
+            self.pid = PIDController2(Kp, Ki, Kd,
+                                      self.pitch_limit['MIN'],
+                                      self.pitch_limit['MAX'],
+                                      15.0, 0, 1.0/60.0)
+        self.target = target_speed
+        if target_alt is not None:
+            self.target_alt = target_alt
+
+    def VerticalSpeedHold(self, target_vs: float,
+                          target_alt: float = None) -> None:
+        """
+        Adjust the pitch to hold the target vertical speed
+        Args:
+            target_vs (float): the target vertical speed in m/s
+            target_alt (float): the target altitude in meters [default=None]
+        """
+        if self.active_mode != Autopilot.vs_hold:
+            self.active_mode = Autopilot.vs_hold
+            Kp = 1.0
+            Ki = 0.1
+            Kd = 0.05
+            self.pid = PIDController2(Kp, Ki, Kd,
+                                      self.pitch_limit['MIN'],
+                                      self.pitch_limit['MAX'],
+                                      15.0, 0, 1.0/60.0)
+        self.target = target_vs
+        if target_alt is not None:
+            self.target_alt = target_alt
+
+    def AltitudeHold(self, altitude_target: float) -> None:
+        """[summary]
+        Adjust the pitch to hold the current altitude
+        Args:
+            altitude_target (float): altitude to hold in meters
+        """
+        if self.active_mode != Autopilot.alt_hold:
+            self.active_mode = Autopilot.alt_hold
+            Kp = 1.0
+            Ki = 0.5
+            Kd = 1.0
+            self.pid = PIDController2(Kp, Ki, Kd, -15.0, 15.0, 1.0, dt=1/60)
+
+        if altitude_target is not None:
+            self.target_alt = altitude_target
+
+    def AltitudeAquire(self, altitude_target: float) -> None:
+        """[summary]
+        Adjust the pitch to interecpt the target altitude
+        Args:
+            altitude_target (float): altitude to hold in meters
+        """
+        if self.active_mode != Autopilot.alt_aquire:
+            self.active_mode = Autopilot.alt_aquire
+            Kp = 4.0
+            Ki = 0.0
+            Kd = 4.0
+            self.pid = PIDController2(Kp, Ki, Kd, -15.0, 15.0, 1.0, dt=1/60)
+
+    def run(self, cas: float, vert_speed: float, altitude: float) -> float:
+        target_pitch = None
+        if self.aircraft.altitude + (vert_speed * 30) >= self.target_alt\
+                and self.active_mode != Autopilot.alt_aquire:
+            self.active_mode = Autopilot.alt_aquire
+            target_pitch = self.run(self)
+
+        elif self.active_mode == Autopilot.speed_hold:
+            target_pitch = self.pid.compute(self.target, cas)
+
+        elif self.active_mode == Autopilot.vs_hold:
+            self.pid.limitMin = self.aircraft.pitch - 3
+            self.pid.limitMax = self.aircraft.pitch + 3
+            if self.pid.limitMin < -15.0:
+                self.pid.limitMin = -15.0
+            if self.pid.limitMax > 15.0:
+                self.pid.limitMax = 15.0
+            target_pitch = self.pid.compute(self.target, vert_speed)
+
+        elif self.active_mode == Autopilot.alt_aquire:
+            target_vs = (self.target_alt - altitude) / 60.0
+            target_pitch = self.pid.compute(target_vs, vert_speed)
+        elif self.active_mode == Autopilot.alt_hold:
+            min_alt = self.target_alt - 61  # target - 200ft
+            max_alt = self.target_alt + 61  # target + 200ft
+            # if we are below target - 200 or target + 200 we revert to vs_hold
+            # with vs of +/- 1000.0 fpm
+            if altitude < min_alt or altitude > max_alt:
+                self.vs_hold(5.17, self.target_alt)
+                return self.run(cas, vert_speed, altitude)
+            target_pitch = self.pid.compute(altitude, self.target_alt)
+        return target_pitch
+
+
+if __name__ == "__main__":
+    pass
