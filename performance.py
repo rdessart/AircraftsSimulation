@@ -94,21 +94,17 @@ class Performance():
         self.lift = self.lift0\
             + (0.5 * self.Q * self.aircraft["WingSpan"] * self.cl)
 
-    def __calculate_drag(self):
+    def __calculate_drag(self, new: bool = True):
         cd_data = self.aircraft["Cd"]
-
         self.cd = cd_data['A'] * (self.aoa ** 2)\
             + cd_data['B'] * self.aoa\
             + cd_data['C']
-
         if self.gear:
             self.cd += self.aircraft["Gear"]["Drag"]
         if self.flaps > 0:
             self.cd += self.aircraft["Flaps"][self.flaps-1]["Drag"]
-
         self.drag = self.drag0\
             + (0.5 * self.Q * self.aircraft["WingSpan"] * self.cd)
-        self.drag *= 1.3  # DEBUG
 
     def __change_pitch(self) -> None:
         """
@@ -133,14 +129,16 @@ class Performance():
         Returns:
             bool: True if the phase is still valid, else False
         """
+        if self.distance_x == 0:
+            self.aoa = self.pitch
         self.__get_Q()
         self.__change_pitch()
         self.__calculate_drag()
         self.__calculate_lift()
         self.g = local_gravity(50.0, self.altitude)
         self.weight = self.mass * self.g
-        self.thrust = self.ac_thrust.takeoff(alt=self.altitude, tas=self.tas)
-        self.thrust *= 0.9
+        self.thrust = self.ac_thrust.takeoff(alt=self.altitude / aero.ft,
+                                             tas=self.tas / aero.kts)
         self.thrust *= self.thrust_percent
         self.t_d = self.thrust - self.drag\
             - (self.weight * math.sin(math.radians(self.pitch)))
@@ -158,6 +156,13 @@ class Performance():
         self.tas += self.acc_x * self.dt
         self.cas = aero.tas2cas(self.tas, self.altitude)
         self.v_y += self.acc_y * self.dt
+        if self.altitude <= 0:
+            self.altitude = 0
+            if self.d_y < 0:
+                self.d_y = 0
+            if self.v_y < 0:
+                self.v_y = 0
+                self.vs = 0
         self.altitude += self.d_y
         self.distance_x += self.d_x
         self.vs = self.v_y / aero.fpm

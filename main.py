@@ -9,15 +9,17 @@ def main():
     a319 = performance.Performance("A319", False)
     a319_wrp = WRAP(ac="A319")
     # print(a319_wrp.takeoff_speed())
-    a319.cas = a319_wrp.takeoff_speed()["maximum"]
-    a319.mass = 60_000.00
+    # a319.cas = a319_wrp.takeoff_speed()["maximum"]
+    a319.mass = 55_000.00
     a319.tas = aero.cas2tas(a319.cas, a319.altitude)
-    a319.pitch = 15.0
+    # a319.pitch = 15.0
+    # a319.pitch_target = 15.0
+    a319.pitch = 0.0
     a319.gear = False
     a319.flaps = 1
-    a319.pitch_target = 15.0
+    a319.pitch_target = 0.0
     # simulation varibale
-    a319.phase = 1
+    a319.phase = 0
     # print("Starting")
     pitchs = []
     fd_pitchs = []
@@ -34,6 +36,9 @@ def main():
     run = True
     while run:
         a319.run()
+        if a319.cas > a319_wrp.takeoff_speed()["default"] and a319.phase == 0:
+            a319.phase = 1
+            a319.pitch_target = 15.0
         # When passing 100ft RA, the gear is up
         if a319.gear and (a319.altitude / aero.ft) > 100.0:
             a319.gear = False
@@ -43,7 +48,7 @@ def main():
 
         if (a319.altitude / aero.ft) > 1500.0 and\
            (a319.altitude / aero.ft) < 1550.0 and a319.phase < 2:
-            a319.thrust_percent = 0.8  # Thrust reduction altitud
+            a319.thrust_percent = 0.9  # Thrust reduction altitud
             a319.phase = 2
 
         if (a319.altitude / aero.ft) > 3000.0 and a319.phase < 4:
@@ -52,16 +57,11 @@ def main():
                 Ki = 0.0003
                 Kd = 0.09
                 pid = PIDController2(Kp, Ki, Kd, -15.0, 15.0, 1.0, dt=1/60)
-                i = 0
                 a319.phase = 3
-            # a319.pitch_target = pid.compute(1000.0,a319.vs)
             outputs.append(pid.compute(1000.0, a319.vs))
             if len(outputs) > 15:
                 a319.pitch_target = sum(outputs) / len(outputs)
                 outputs.remove(outputs[0])
-            # # debug
-            # if a319.tas > aero.cas2tas(250 * aero.kts, a319.altitude):
-            #     a319.tas = aero.cas2tas(250 * aero.kts, a319.altitude)
 
         if a319.flaps == 0 and round(a319.cas / aero.kts) > 250:
             if a319.phase != 4:
@@ -86,7 +86,7 @@ def main():
             if a319.tas > aero.mach2tas(0.78, a319.altitude):
                 a319.tas = aero.mach2tas(0.78, a319.altitude)
 
-        if 32_900 <= a319.altitude / aero.ft <= 33_000:
+        if 32_800 <= a319.altitude / aero.ft <= 33_200:
             if a319.phase != 6:
                 a319.phase = 6
                 distance_0 = a319.distance_x
@@ -101,7 +101,7 @@ def main():
             if a319.tas > aero.mach2tas(0.78, a319.altitude):
                 a319.tas = aero.mach2tas(0.78, a319.altitude)
         # OUTPUTS:
-        if a319.phase >= 3:
+        if a319.phase >= 0:
             print(f"{a319.phase} : {a319.altitude / aero.ft:02f}",
                   f"- {a319.vs:02f} - {a319.cas / aero.kts}")
             alts.append(int(round(a319.altitude / aero.kts)))
@@ -110,9 +110,6 @@ def main():
             pitchs.append(a319.pitch)
             times.append(i / 60.0)
             fd_pitchs.append(a319.pitch_target)
-            # kpe.append(pid.get_kpe())
-            # kie.append(pid.get_kie())
-            # kde.append(pid.get_kde())
             i += 1
 
     print(f"Cas End  = {a319.cas / aero.kts}")
@@ -120,26 +117,12 @@ def main():
 
 
 def draw(times, vs, alts, cas, pitchs, fd_pitchs, kpe, kde, kie):
-    # fig, (ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8) \
-    fig, (ax1, ax2, ax3) \
-        = plt.subplots(3, sharex=True)
-    #   = plt.subplots(8, sharex=True)
+    fig, (ax1, ax2, ax3) = plt.subplots(3, sharex=True)
     ax1.plot(times, vs)
     ax1.set(ylabel='VS(fpm)')
     ax2.plot(times, alts)
     ax2.set(ylabel='ATL')
     ax3.plot(times, cas)
-    # ax3.set(ylabel='CAS')
-    # ax4.plot(times, pitchs)
-    # ax4.set(ylabel='Pitch')
-    # ax5.plot(times, fd_pitchs)
-    # ax5.set(ylabel='FD Y')
-    # ax6.plot(times, kpe)
-    # ax6.set(ylabel='KPE')
-    # ax7.plot(times, kie)
-    # ax7.set(ylabel='KIE')
-    # ax8.plot(times, kde)
-    # ax8.set(ylabel='KDE')
     plt.grid()
     plt.show()
 
