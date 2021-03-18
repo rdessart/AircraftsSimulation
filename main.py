@@ -1,8 +1,8 @@
 from openap import WRAP, aero
 import matplotlib.pyplot as plt
 import performance
-from .automation.pid_controller import PIDController2
-from .automation.autopilot import Autopilot
+# from automation.pid_controller import PIDController2
+from automation.autopilot import Autopilot
 
 
 def main():
@@ -51,74 +51,45 @@ def main():
 
         if (a319.altitude / aero.ft) > 3000.0 and a319.phase < 4:
             if a319.phase != 3:
-                autopilot.vs_hold(1000.0 * aero.kts)
-                # Kp = 1.0
-                # Ki = 0.1
-                # Kd = 0.05
-                # pid = PIDController2(Kp, Ki, Kd, -15.0, 15.0, 1.0, dt=1/60)
-                # a319.phase = 3
-
-                # pid.limitMin = a319.pitch - 3
-                # if pid.limitMin < -15.0:
-                #     pid.limitMin = -15.0
-                # pid.limitMax = a319.pitch + 3
-                # if pid.limitMax > 15.0:
-                #     pid.limitMax = 15.0
-                # a319.pitch_target = pid.compute(1000.0 * aero.fpm, a319.v_y)
+                a319.phase = 3
+                autopilot.VerticalSpeedHold(1000.0 * aero.fpm, target_alt)
 
         if a319.flaps == 0 and round(a319.cas / aero.kts) > 250:
             if a319.phase != 4:
                 a319.phase = 4
-                Kp = 2.0
-                Ki = 0.1
-                Kd = 2.0
-                pid = PIDController2(Kp, Ki, Kd, -15.0, 15.0, 1.0, dt=1/60)
             speed_target = 320 * aero.kts
             if a319.altitude / aero.ft < 10_000:
                 speed_target = 250 * aero.kts
             elif a319.altitude >= aero.crossover_alt(320 * aero.kts, 0.78):
                 speed_target = aero.mach2cas(0.78, a319.altitude)
-            a319.pitch_target = -1 * pid.compute(speed_target, a319.cas)
+            if autopilot.active_mode != Autopilot.speed_hold \
+                    or autopilot.target != speed_target:
+                autopilot.SpeedHold(speed_target, target_alt)
 
         if a319.altitude + (a319.v_y * 30) >= target_alt * aero.ft:
             if a319.phase != 5:
                 a319.phase = 5
-                Kp = 4.0
-                Ki = 0.0
-                Kd = 4.0
-                pid = PIDController2(Kp, Ki, Kd, -15.0, 15.0, 1.0, dt=1/60)
-
-            target_vs = ((target_alt * aero.ft) - a319.altitude) / 60.0
-            a319.pitch_target = pid.compute(target_vs, a319.v_y)
-
-            if a319.tas > aero.mach2tas(0.78, a319.altitude):
-                a319.tas = aero.mach2tas(0.78, a319.altitude)
 
         if target_alt - 200 <= a319.altitude / aero.ft <= target_alt + 200:
             if a319.phase != 6:
                 a319.phase = 6
                 distance_0 = a319.distance_x
-                Kp = 1.0
-                Ki = 0.5
-                Kd = 1.0
-                pid = PIDController2(Kp, Ki, Kd, -15.0, 15.0, 1.0, dt=1/60)
-
-            a319.pitch_target = pid.compute(a319.altitude,
-                                            target_alt * aero.ft)
+                autopilot.AltitudeHold(target_alt)
             if distance_0 / aero.nm >= 100.0:
                 run = False
             if a319.tas > aero.mach2tas(0.78, a319.altitude):
                 a319.tas = aero.mach2tas(0.78, a319.altitude)
-        # if a319.altitude >= target_alt * aero.ft:
-            # run = False
-        # if a319.cas / aero.kts > 250.0:
-        #     a319.tas = aero.cas2tas(250 * aero.kts, a319.altitude)
-        # OUTPUTS:
-        # if a319.phase == 3:
+
         if a319.phase >= 0:
+            if autopilot.active_mode is not None:
+                a319.pitch_target = autopilot.run(a319.cas,
+                                                  a319.v_y,
+                                                  a319.altitude,
+                                                  a319.pitch)
             print(f"{a319.phase} : {a319.altitude / aero.ft:02f}",
                   f"- {a319.vs:02f} - {a319.cas / aero.kts:02f} - ",
-                  f"{aero.tas2mach(a319.tas, a319.altitude):0.3f}")
+                  f"{aero.tas2mach(a319.tas, a319.altitude):0.3f}",
+                  f"{a319.pitch:02f} / {a319.pitch_target:02f}")
             alts.append(int(round(a319.altitude / aero.kts)))
             vs.append(int(a319.vs))
             cas.append(a319.cas / aero.kts)
