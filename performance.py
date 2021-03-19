@@ -60,7 +60,7 @@ class Performance():
         self.distance_x = 0.0  # total distance[m]
         self.d_x = 0.0  # instantaneous X distance[m]
         self.d_y = 0.0  # instantaneous Y distance[m]
-        self.phase = ""  # Current phase
+        self.phase = 0  # Current phase
         self.cd = 0.0
         self.cl = 0.0
         self.drag0 = self.aircraft["Drag0"]
