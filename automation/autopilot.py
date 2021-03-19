@@ -5,9 +5,10 @@ from .pid_controller import PIDController
 class Autopilot():
     """Autopilot description"""
     speed_hold = 1
-    vs_hold = 2
-    alt_aquire = 3
-    alt_hold = 4
+    mach_hold = 2
+    vs_hold = 3
+    alt_aquire = 4
+    alt_hold = 5
 
     def __init__(self):
         """Initalise the Autopilot.
@@ -31,14 +32,27 @@ class Autopilot():
         """
         if self.active_mode != Autopilot.speed_hold:
             self.active_mode = Autopilot.speed_hold
-            Kp = 2.0
-            Ki = 0.1
-            Kd = 2.0
+            Kp = 2.5
+            Ki = 0.9
+            Kd = 1.0
             self.pid = PIDController(Kp, Ki, Kd,
                                      self.pitch_limit['MIN'],
                                      self.pitch_limit['MAX'],
                                      0, 1.0/60.0)
         self.target = target_speed
+        if target_alt is not None:
+            self.target_alt = target_alt
+
+    def MachHold(self, target_mach: float, target_alt: float = None) -> None:
+        if self.active_mode != Autopilot.mach_hold:
+            Kp = 2.0
+            Ki = 1.0
+            Kd = 0.0
+            self.pid = PIDController(Kp, Ki, Kd,
+                                     self.pitch_limit['MIN'],
+                                     self.pitch_limit['MAX'],
+                                     0, 1.0/60.0)
+        self.target = target_mach
         if target_alt is not None:
             self.target_alt = target_alt
 
@@ -52,7 +66,7 @@ class Autopilot():
         """
         if self.active_mode != Autopilot.vs_hold:
             self.active_mode = Autopilot.vs_hold
-            Kp = 1.0
+            Kp = 1.5
             Ki = 0.1
             Kd = 0.05
             self.pid = PIDController(Kp, Ki, Kd,
@@ -71,9 +85,9 @@ class Autopilot():
         """
         if self.active_mode != Autopilot.alt_hold:
             self.active_mode = Autopilot.alt_hold
-            Kp = 1.0
-            Ki = 0.5
-            Kd = 1.0
+            Kp = 0.5
+            Ki = 0.05
+            Kd = 0.01
             self.pid = PIDController(Kp, Ki, Kd, self.pitch_limit['MIN'],
                                      self.pitch_limit['MAX'], 0.0, dt=1/60)
 
@@ -95,7 +109,7 @@ class Autopilot():
                                      self.pitch_limit['MAX'], 0.0, dt=1/60)
 
     def run(self, cas: float, vert_speed: float,
-            altitude: float, pitch: float) -> float:
+            altitude: float, pitch: float, mach: float) -> float:
         target_pitch = None
         if self.active_mode is None:
             return None
@@ -103,10 +117,13 @@ class Autopilot():
         if altitude + (vert_speed * 30) >= self.target_alt\
                 and self.active_mode != Autopilot.alt_aquire:
             self.active_mode = Autopilot.alt_aquire
-            return self.run(cas, vert_speed, altitude)
+            return self.run(cas, vert_speed, altitude, pitch, mach)
 
         elif self.active_mode == Autopilot.speed_hold:
             target_pitch = -1 * self.pid.compute(self.target, cas)
+
+        elif self.active_mode == Autopilot.mach_hold:
+            target_pitch = -1 * self.pid.compute(self.target, mach)
 
         elif self.active_mode == Autopilot.vs_hold:
             self.pid.limitMin = pitch - 3
@@ -128,7 +145,7 @@ class Autopilot():
             # with vs of +/- 1000.0 fpm
             if altitude < min_alt or altitude > max_alt:
                 self.VerticalSpeedHold(5.17, self.target_alt)
-                return self.run(cas, vert_speed, altitude, pitch)
+                return self.run(cas, vert_speed, altitude, pitch, mach)
             target_pitch = self.pid.compute(altitude, self.target_alt)
         return target_pitch
 
