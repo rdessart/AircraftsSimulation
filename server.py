@@ -1,4 +1,3 @@
-import time
 import socket
 import select
 import queue

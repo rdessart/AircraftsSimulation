@@ -8,11 +8,19 @@
 	"launch": {
 		"version": "0.2.0",
 		"configurations": [
+
 			{
-				"name": "Python: Current File",
+				"name": "Python: Main",
 				"type": "python",
 				"request": "launch",
 				"program": "main.py",
+				"console": "integratedTerminal"
+			},
+			{
+				"name": "Python: Server",
+				"type": "python",
+				"request": "launch",
+				"program": "server.py",
 				"console": "integratedTerminal"
 			}
 		]
