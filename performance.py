@@ -1,4 +1,5 @@
 import json
+from lift_drag import LiftDrag
 import math
 import csv
 
@@ -35,15 +36,7 @@ class Performance():
         self.ac_thrust = Thrust(ac=self.aircraft["Name"],
                                 eng=self.aircraft_data["engine"]["default"])
         # Performance Variables (all unit in SI except stated otherwise)
-        perfo_file = open(f"./data/{aircraft_name}.csv", 'r').readlines()
-        self.perfo_data = {}
-        for row in perfo_file[1:]:
-            rows = row.split(',')
-            if len(rows) < 3:
-                continue
-            aoa = round(float(rows[0]), 2)
-            self.perfo_data[aoa] = [float(rows[1]), float(rows[2])]
-
+        self.lift_drag = LiftDrag(f"./data/{aircraft_name}_ld.csv")
         self.g = 9.81
         self.mass = self.aircraft_data["limits"]["MTOW"]
         self.thrust_percent = 1.0
@@ -97,17 +90,6 @@ class Performance():
         # self.cl = cl_data['A'] * (self.aoa ** 2)\
         #     + cl_data['B'] * self.aoa\
         #     + cl_data['C']
-        aoa = round(self.aoa, 2)
-        aoas = [aoa2 for aoa2 in self.perfo_data.keys()]
-        aoas.sort()
-        if aoa in self.perfo_data:
-            self.cl = self.perfo_data[aoa][0]
-        elif aoa < aoas[0]:
-            self.cl = self.perfo_data[aoas[0]][0]
-        elif aoa > aoas[len(aoas)-1]:
-            self.cl = self.perfo_data[aoas[len(aoas)-1]][0]
-        else:
-            print("CL data not found!")
         if self.gear:
             self.cl += self.aircraft["Gear"]["Lift"]
         if self.flaps > 0:
@@ -117,17 +99,6 @@ class Performance():
             + (0.5 * self.Q * self.aircraft["WingSpan"] * self.cl)
 
     def __calculate_drag(self, new: bool = True):
-        aoa = round(self.aoa, 2)
-        aoas = [aoa2 for aoa2 in self.perfo_data.keys()]
-        aoas.sort()
-        if aoa in self.perfo_data:
-            self.cd = self.perfo_data[aoa][1]
-        elif aoa < aoas[0]:
-            self.cd = self.perfo_data[aoas[0]][1]
-        elif aoa > aoas[len(aoas)-1]:
-            self.cd = self.perfo_data[aoas[len(aoas)-1]][1]
-        else:
-            print("CL data not found")
         if self.gear:
             self.cd += self.aircraft["Gear"]["Drag"]
         if self.flaps > 0:
@@ -160,6 +131,8 @@ class Performance():
         """
         if self.distance_x == 0:
             self.aoa = self.pitch
+        self.cl, self.cd = self.lift_drag.get_data(self.aoa)
+        # print(self.cl, self.cd)
         self.__get_Q()
         self.__change_pitch()
         self.__calculate_drag()
