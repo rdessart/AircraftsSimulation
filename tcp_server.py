@@ -1,9 +1,8 @@
 import socket
 import select
-import queue
 
 
-class Server():
+class TCPServer():
     def __init__(self, port):
         self.port = port
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -14,25 +13,35 @@ class Server():
         self.clients = {}
 
     def bind(self) -> bool:
-        try:
-            self.sock.bind(("0.0.0.0", self.port))
-        except:
-            print("Unable to bind")
-            return False
-        try:
-            self.sock.listen(5)
-        except:
-            print("Unable to listen")
-            return False
+        self.sock.bind(("0.0.0.0", self.port))
+        self.sock.listen(5)
         print(f"Server running on {self.port}")
         self.inputs.append(self.sock)
         return True
 
+    def parse_data(self, data: str) -> list:
+        data = data.strip('|')
+        cmds = data.split(' ')
+        if cmds[0] == "CRE":
+            # Create AI AIRCRAFT
+            try:
+                icao_type, latitude, longitude, *other = cmds[1:]
+            except ValueError:
+                print("Not enought parameters")
+                return [False, "Not enought parameters"]
+            try:
+                latitude = float(latitude)
+                longitude = float(longitude)
+            except ValueError:
+                print("Latitude and/or longitude are not float")
+                return [False, "Latitude and/or longitude are not float"]
+            print(f"Creating an {icao_type} at {latitude:02f}°N ",
+                  f"- {longitude:02f}°S")
+            return [True, "Ok"]
+
     def run(self):
         execute = True
         while execute:
-            # connection, client_address = self.sock.accept()
-            # self.clients[connection] = client_address
             readable, writable, exceptional = select.select(self.inputs,
                                                             self.outputs,
                                                             self.inputs)
@@ -58,9 +67,13 @@ class Server():
                     print(f">>>{data}")
                     if data == "QUIT":
                         execute = False
+                        continue
+                    else:
+                        res, error = self.parse_data(data)
+                        s.send(error.encode())
 
 
 if __name__ == "__main__":
-    server = Server(50_555)
+    server = TCPServer(50_555)
     server.bind()
     server.run()
