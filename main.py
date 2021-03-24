@@ -9,13 +9,13 @@ def main():
     a319 = performance.Performance("A319", False)
     a319_wrp = WRAP(ac="A319")
     autopilot = Autopilot()
-    a319.mass = 66_000.00
+    a319.mass = 60_000.00
     a319.pitch = 0.0
     a319.gear = True
     a319.flaps = 1
     a319.pitch_target = 0.0
     a319.pitch_rate_of_change = 3.0
-    target_alt = 39_000
+    target_alt = 30_000
     # simulation varibale
     a319.phase = 0
     pitchs = []
@@ -63,9 +63,6 @@ def main():
             if a319.altitude / aero.ft < 10_000:
                 speed_target = 250 * aero.kts
             elif a319.altitude >= aero.crossover_alt(320 * aero.kts, 0.78):
-                # if not a319.cruise_thrust:
-                #     a319.cruise_thrust = True
-                # a319.thrust_percent = 1.0
                 speed_target = aero.mach2cas(0.78, a319.altitude)
             if autopilot.active_mode != Autopilot.speed_hold \
                     or autopilot.target != speed_target:
@@ -111,7 +108,8 @@ def main():
             print(f"{a319.phase} : {a319.altitude / aero.ft:02f}",
                   f"- {a319.vs:02f} - {a319.cas / aero.kts:02f} - ",
                   f"{mach:0.3f} - {a319.aoa:0.2f} ",
-                  f"{a319.pitch:02f} / {a319.pitch_target:02f}")
+                  f"{a319.pitch:02f} / {a319.pitch_target:02f} - ",
+                  f"{a319.cl:04f} - {a319.cd:04f}")
             alts.append(int(round(a319.altitude / aero.ft)))
             vs.append(int(a319.vs))
             cas.append(a319.cas / aero.kts)
