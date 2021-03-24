@@ -1,7 +1,5 @@
 import socket
-import math
 import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
 
 list_aoas = []
 list_cl = []
@@ -12,7 +10,6 @@ aoas = {}
 def main():
     soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
     soc.bind(('0.0.0.0', 50_555))
-    
     while True:
         try:
             data = soc.recvfrom(1024, 0)
@@ -33,6 +30,7 @@ def main():
             index = list_aoas.index(aoa)
             list_cd[index] = cd
             list_cl[index] = cl
+
 
 if __name__ == "__main__":
     main()
