@@ -9,6 +9,7 @@
 		"version": "0.2.0",
 		"configurations": [
 
+
 			{
 				"name": "Python: Main",
 				"type": "python",
@@ -21,6 +22,13 @@
 				"type": "python",
 				"request": "launch",
 				"program": "server.py",
+				"console": "integratedTerminal"
+			}
+			{
+				"name": "Python: Data",
+				"type": "python",
+				"request": "launch",
+				"program": "./data/data_parser.py",
 				"console": "integratedTerminal"
 			}
 		]
