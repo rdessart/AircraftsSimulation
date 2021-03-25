@@ -22,6 +22,10 @@ class Autopilot():
         self.ap_dt = 1.0 / 60.0
         self.target = 0
         self.target_alt = 0.0
+        # DEBUG
+        self.fout = open("ap_debug.txt", 'w+')
+        self.fout.write("Kpe,Kie,Kde,input,target,output\n")
+        self.fout.flush()
 
     def SpeedHold(self, target_speed: float, target_alt: float = None) -> None:
         """
@@ -32,9 +36,10 @@ class Autopilot():
         """
         if self.active_mode != Autopilot.speed_hold:
             self.active_mode = Autopilot.speed_hold
-            Kp = 2.5
-            Ki = 0.9
-            Kd = 1.0
+            Kp = 1.0  # AP 3
+            Ki = 0.002 
+            # Ki = 0.003 (267.17)
+            Kd = 40.0
             self.pid = PIDController(Kp, Ki, Kd,
                                      self.pitch_limit['MIN'],
                                      self.pitch_limit['MAX'],
@@ -66,9 +71,12 @@ class Autopilot():
         """
         if self.active_mode != Autopilot.vs_hold:
             self.active_mode = Autopilot.vs_hold
-            Kp = 1.5
-            Ki = 0.1
-            Kd = 0.05
+            # Kp = 1.5
+            # Ki = 0.1
+            # Kd = 0.05
+            Kp = 0.5
+            Ki = 0.0
+            Kd = 0.0
             self.pid = PIDController(Kp, Ki, Kd,
                                      self.pitch_limit['MIN'],
                                      self.pitch_limit['MAX'],
@@ -121,17 +129,21 @@ class Autopilot():
 
         elif self.active_mode == Autopilot.speed_hold:
             target_pitch = -1 * self.pid.compute(self.target, cas)
+            self.fout.write(f"{self.pid.get_kpe()},{self.pid.get_kie()},"
+                            f"{self.pid.get_kde()},{cas},{self.target},"
+                            f"{target_pitch}\n")
+            self.fout.flush()
 
         elif self.active_mode == Autopilot.mach_hold:
             target_pitch = -1 * self.pid.compute(self.target, mach)
 
         elif self.active_mode == Autopilot.vs_hold:
-            self.pid.limitMin = pitch - 3
-            self.pid.limitMax = pitch + 3
-            if self.pid.limitMin < -15.0:
-                self.pid.limitMin = -15.0
-            if self.pid.limitMax > 15.0:
-                self.pid.limitMax = 15.0
+            # self.pid.limitMin = pitch - 3
+            # self.pid.limitMax = pitch + 3
+            # if self.pid.limitMin < -15.0:
+            #     self.pid.limitMin = -15.0
+            # if self.pid.limitMax > 15.0:
+            #     self.pid.limitMax = 15.0
             target_pitch = self.pid.compute(self.target, vert_speed)
 
         elif self.active_mode == Autopilot.alt_aquire:

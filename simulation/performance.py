@@ -1,9 +1,13 @@
 import json
-from lift_drag import LiftDrag
 import math
-import csv
 
-from openap import Thrust, aero, prop
+from openap import aero, prop, Thrust, FuelFlow
+
+from .lift_drag import LiftDrag
+
+
+def interpolate(x, x1, x2, y1, y2):
+    return y1 + (((x - x1) / (x2 - x1)) * (y2 - y1))
 
 
 def local_gravity(latitude: float, height: float) -> float:
@@ -29,17 +33,19 @@ class Performance():
     def __init__(self, aircraft_name, write_output: bool = False):
         self.write = write_output
         # General Variables
+        self.aircraft_data = prop.aircraft(aircraft_name)
         self.dt = 1.0 / 60.0  # simulation timestep 60 per seconds
         aircraft_txt = open(f"./data/{aircraft_name}.json", 'r').read()
         self.aircraft = json.loads(aircraft_txt)
-        self.aircraft_data = prop.aircraft(aircraft_name)
+        eng_name = self.aircraft_data["engine"]["default"]
         self.ac_thrust = Thrust(ac=self.aircraft["Name"],
-                                eng=self.aircraft_data["engine"]["default"])
+                                eng=eng_name)
+        # self.ac_thrust = Thrust(f"./data/{aircraft_name}_thrust.csv")
         # Performance Variables (all unit in SI except stated otherwise)
         self.lift_drag = LiftDrag(f"./data/{aircraft_name}_ld.csv")
         self.g = 9.81
         self.mass = self.aircraft_data["limits"]["MTOW"]
-        self.thrust_percent = 1.0
+        self.thrust_lever = 1.0
         self.altitude = 0.0
         self.pressure = 0.0
         self.density = 0.0
@@ -72,6 +78,7 @@ class Performance():
         self.flaps = 0
         self.pitch_target = 0.0
         self.pitch_rate_of_change = 3.0  # rate of change of the pitch [°/sec]
+        self.ac_fuelflow = FuelFlow(ac=self.aircraft["Name"], eng=eng_name)
         if self.write:
             self.output = open("output.csv", 'w+')
             self.output.write(self.__get_header())
@@ -86,10 +93,6 @@ class Performance():
         self.aoa = self.pitch - self.fpa
 
     def __calculate_lift(self):
-        # cl_data = self.aircraft["Cl"]
-        # self.cl = cl_data['A'] * (self.aoa ** 2)\
-        #     + cl_data['B'] * self.aoa\
-        #     + cl_data['C']
         if self.gear:
             self.cl += self.aircraft["Gear"]["Lift"]
         if self.flaps > 0:
@@ -139,9 +142,18 @@ class Performance():
         self.__calculate_lift()
         self.g = local_gravity(50.0, self.altitude)
         self.weight = self.mass * self.g
-        self.thrust = self.ac_thrust.takeoff(alt=self.altitude / aero.ft,
+        max_thrust = self.ac_thrust.takeoff(alt=self.altitude / aero.ft,
                                              tas=self.tas / aero.kts)
-        self.thrust *= self.thrust_percent
+        idle_thrust = self.ac_thrust.descent_idle(tas=self.tas / aero.kts, 
+                                                  alt=self.altitude / aero.ft)
+        self.thrust = interpolate(self.thrust_lever, 0.0, 1.0,
+                                  idle_thrust, max_thrust)
+        # self.thrust = self.ac_thrust.takeoff(alt=self.altitude / aero.ft,
+        #                                      tas=self.tas / aero.kts)
+        self.thrust *= self.thrust_lever
+        fuelflow = self.ac_fuelflow.at_thrust(acthr=self.thrust / 2.0,
+                                              alt=self.altitude / aero.ft)
+        self.mass -= fuelflow * self.dt * 2
         self.t_d = self.thrust - self.drag\
             - (self.weight * math.sin(math.radians(self.pitch)))
         self.l_w = self.lift\
@@ -180,7 +192,7 @@ class Performance():
                f"{self.fpa},{self.aoa},{self.Q},{self.acc_x},{self.acc_y},"\
                f"{self.distance_x},{self.d_x},{self.d_y},{self.phase},"\
                f"{self.cd},{self.drag0},{self.gear},{self.flaps},{self.cl},"\
-               f"{self.lift},{self.weight},{self.l_w},{self.thrust_percent},"\
+               f"{self.lift},{self.weight},{self.l_w},{self.thrust_lever},"\
                f"{self.altitude / aero.ft},{self.g},{self.pitch_target}\n"
 
     def __get_header(self):

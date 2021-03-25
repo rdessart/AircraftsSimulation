@@ -23,11 +23,22 @@ class PIDController():
         self.use_low_pass_filter = False
         self.use_kick_avoidance = False
 
-        self._integrator = 0.0
-        self._differenciator = 0.0
+        self._integral = 0.0
+        self._derivative = 0.0
         self._previousError = 0.0
         self._previousMeasurement = 0.0
         self._error = 0.0
+
+    def _clamp(self, value):
+        lower = self.limitMin
+        upper = self.limitMax
+        if value is None:
+            return None
+        elif (upper is not None) and (value > upper):
+            return upper
+        elif (lower is not None) and (value < lower):
+            return lower
+        return value
 
     def compute(self, target: float,
                 measurement: float, dt: float = None) -> float:
@@ -49,33 +60,32 @@ class PIDController():
         limitIntMax = 0.0
         limitIntMin = 0.0
         self._error = target - measurement
+        d_error = self._error - self._previousError
         proportional = self._error * self.kp
-        self._integrator += 0.5 * self.ki * dt *\
-            (self._error + self._previousError)
-        if self.limitMax > proportional:
-            limitIntMax = self.limitMax - proportional
-        elif self.limitMin < proportional:
-            limitIntMin = self.limitMin - proportional
+        self._integral += self.ki  * self._error * dt
+        self._integral = self._clamp(self._integral)
+        self._derivative = self.kd * d_error / self.dt
+        # if self.limitMax > proportional:
+        #     limitIntMax = self.limitMax - proportional
+        # elif self.limitMin < proportional:
+        #     limitIntMin = self.limitMin - proportional
 
-        if self._integrator > limitIntMax:
-            self._integrator = limitIntMax
-        elif self._integrator < limitIntMin:
-            self._integrator = limitIntMin
+        # if self._integrator > limitIntMax:
+        #     self._integrator = limitIntMax
+        # elif self._integrator < limitIntMin:
+        #     self._integrator = limitIntMin
 
-        if self.use_kick_avoidance:
-            differenciator_delta = measurement - self._previousMeasurement
-        else:
-            differenciator_delta = self._error - self._previousError
-        self._differenciator = (2.0 * self.kd * differenciator_delta)
-        if self.use_low_pass_filter:
-            self._differenciator += ((2.0 * self.tau * dt)
-                                     * self._differenciator)\
-                                 / (2.0 * self.tau * dt)
-        output = proportional + self._integrator + self._differenciator
-        if output > self.limitMax:
-            output = self.limitMax
-        elif output < self.limitMin:
-            output = self.limitMin
+       
+        # if self.use_low_pass_filter:
+        #     self._derivative += ((2.0 * self.tau * dt)
+        #                              * self._derivative)\
+        #                          / (2.0 * self.tau * dt)
+        output = proportional + self._integral + self._derivative
+        # if output > self.limitMax:
+        #     output = self.limitMax
+        # elif output < self.limitMin:
+        #     output = self.limitMin
+        output = self._clamp(output)
         self._previousError = self._error
         self._previousMeasurement = measurement
         return output
@@ -84,10 +94,10 @@ class PIDController():
         return self.kp * self._error
 
     def get_kie(self):
-        return self._integrator * self.ki
+        return self._integral * self.ki
 
     def get_kde(self):
-        return self._differenciator * self.kd
+        return self._derivative * self.kd
 
     # def get_kie(self):
     #     return self.ki * self._integrator
