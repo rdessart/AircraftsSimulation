@@ -42,7 +42,6 @@ def main():
 if __name__ == "__main__":
     main()
     fout = open("a319_ld.csv", 'w+')
-    
     fout.write("AOA,Cl,Cd\n")
     keys = [aoa for aoa in aoas.keys()]
     keys.sort()

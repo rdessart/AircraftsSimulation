@@ -57,34 +57,13 @@ class PIDController():
         """
         if dt is None:
             dt = self.dt
-        limitIntMax = 0.0
-        limitIntMin = 0.0
         self._error = target - measurement
         d_error = self._error - self._previousError
         proportional = self._error * self.kp
-        self._integral += self.ki  * self._error * dt
+        self._integral += self.ki * self._error * dt
         self._integral = self._clamp(self._integral)
         self._derivative = self.kd * d_error / self.dt
-        # if self.limitMax > proportional:
-        #     limitIntMax = self.limitMax - proportional
-        # elif self.limitMin < proportional:
-        #     limitIntMin = self.limitMin - proportional
-
-        # if self._integrator > limitIntMax:
-        #     self._integrator = limitIntMax
-        # elif self._integrator < limitIntMin:
-        #     self._integrator = limitIntMin
-
-       
-        # if self.use_low_pass_filter:
-        #     self._derivative += ((2.0 * self.tau * dt)
-        #                              * self._derivative)\
-        #                          / (2.0 * self.tau * dt)
         output = proportional + self._integral + self._derivative
-        # if output > self.limitMax:
-        #     output = self.limitMax
-        # elif output < self.limitMin:
-        #     output = self.limitMin
         output = self._clamp(output)
         self._previousError = self._error
         self._previousMeasurement = measurement

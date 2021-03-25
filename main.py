@@ -19,7 +19,7 @@ def main():
     a319.flaps = 1
     a319.pitch_target = 0.0
     a319.pitch_rate_of_change = 3.0
-    target_alt = 6_000
+    target_alt = 12_000
     # simulation varibale
     a319.phase = 0
     pitchs = []
@@ -49,7 +49,7 @@ def main():
 
         if (a319.altitude / aero.ft) > 1500.0 and\
            (a319.altitude / aero.ft) < 1550.0 and a319.phase < 2:
-            a319.thrust_lever = 0.95
+            a319.thrust_lever = 1.
             a319.phase = 2
 
         if (a319.altitude / aero.ft) > 3000.0 and a319.phase < 4:
@@ -57,12 +57,12 @@ def main():
                 a319.phase = 3
                 autopilot.VerticalSpeedHold(1000.0 * aero.fpm, target_alt)
 
-        # if a319.flaps == 0 and round(a319.cas / aero.kts) > 250\
-        #         and a319.altitude / aero.ft < target_alt:
-        #     if a319.phase != 4:
-        #         a319.phase = 4
-        #         speed_target = 250 * aero.kts
-        #         autopilot.SpeedHold(speed_target, target_alt)
+        if a319.flaps == 0 and round(a319.cas / aero.kts) > 250\
+                and a319.altitude / aero.ft < target_alt:
+            if a319.phase != 4:
+                a319.phase = 4
+                speed_target = 250 * aero.kts
+                autopilot.SpeedHold(speed_target, target_alt)
         #     # speed_target = 320 * aero.kts
         #     # if a319.altitude / aero.ft < 10_000:
         #     #     speed_target = 250 * aero.kts
@@ -73,27 +73,30 @@ def main():
         #     #         or autopilot.target != speed_target:
         #         # autopilot.SpeedHold(speed_target, target_alt)
 
-        # if a319.altitude + (a319.v_y * 30) >= target_alt * aero.ft:
-        #     if a319.phase != 5:
-        #         a319.phase = 5
-        # if a319.altitude / aero.ft > target_alt + 200:
-        #     if a319.phase != 7:
-        #         a319.phase = 7
-        #         autopilot.VerticalSpeedHold(-1000 * aero.fpm, target_alt)
-        #         a319.thrust_lever = 0.0
+        if a319.altitude + (a319.v_y * 30) >= target_alt * aero.ft:
+            if a319.phase != 5:
+                a319.phase = 5
+                autopilot.AltitudeAquire(target_alt)
+        if a319.altitude / aero.ft > target_alt + 200:
+            if a319.phase != 7:
+                a319.phase = 7
+                autopilot.VerticalSpeedHold(-1000 * aero.fpm, target_alt)
+                a319.thrust_lever = 0.0
 
         if target_alt - 200 <= a319.altitude / aero.ft <= target_alt + 200:
-            run = False
-            continue
+            if a319.phase != 6:
+                a319.phase = 6
+                autopilot.AltitudeHold(target_alt)
+                if distance_0 == 0.0:
+                    distance_0 = a319.distance_x
+            if (a319.distance_x - distance_0) / aero.nm >= 10.0:
+                run = False
+        #     run = False
+        #     continue
         if a319.cas / aero.kts >= 320:
             a319.tas = aero.cas2tas(320 * aero.kts, a319.altitude)
-        #     if a319.phase != 6:
-        #         a319.phase = 6
-        #         if distance_0 == 0.0:
-        #             distance_0 = a319.distance_x
-        #         autopilot.AltitudeHold(target_alt)
-        #     if (a319.distance_x - distance_0) / aero.nm >= 20.0:
-        #         run = False
+            # if a319.phase != 6:
+
         #     if a319.tas > aero.mach2tas(0.78, a319.altitude)\
         #             and autopilot.active_mode != Autopilot.mach_hold:
         #         autopilot.MachHold(0.78, target_alt)
@@ -101,14 +104,14 @@ def main():
         if a319.phase >= 0:
             if (a319.pitch > 0 or a319.altitude > 0) \
                     and (round((a319.altitude / aero.ft) / 10) * 10) \
-                        % 5000 == 0:
+                    % 5000 == 0:
                 debug.write(f"{a319.altitude / aero.ft},{a319.vs},"
                             f"{a319.cas / aero.kts},{a319.tas/ aero.kts},"
                             f"{a319.aoa},{a319.cl},{a319.cd},{a319.drag},"
                             f"{a319.lift},{a319.mass},{a319.thrust}\n")
                 debug.flush()
 
-            if a319.phase < 7 and a319.altitude > 10_000 * aero.ft :
+            if a319.phase < 7 and a319.altitude > 10_000 * aero.ft:
                 a319.thrust_lever = 1.0
             if a319.phase == 7:
                 a319.thrust_lever = 0.0
