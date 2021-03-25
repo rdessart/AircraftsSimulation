@@ -1,6 +1,6 @@
 from openap import WRAP, aero
 import matplotlib.pyplot as plt
-import performance
+import simulation.performance as performance
 from automation.autopilot import Autopilot
 
 

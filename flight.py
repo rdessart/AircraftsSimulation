@@ -4,7 +4,7 @@ import json
 from openap.kinematic import WRAP
 from openap.extra import aero
 
-from performance import Performance
+from simulation.performance import Performance
 
 
 class Flight():

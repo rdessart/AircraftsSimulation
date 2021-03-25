@@ -23,7 +23,7 @@
 				"request": "launch",
 				"program": "server.py",
 				"console": "integratedTerminal"
-			}
+			},
 			{
 				"name": "Python: Data",
 				"type": "python",
