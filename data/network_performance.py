@@ -20,7 +20,6 @@ def main():
         cl = float(cl)
         cd = float(cd)
         aoas[aoa] = [cl, cd]
-        print(aoa, cl, cd)
         print(f"{float(aoa)} - {float(cl)} - {float(cd)}")
         if aoa not in list_aoas:
             list_aoas.append(aoa)
@@ -34,7 +33,7 @@ def main():
 
 if __name__ == "__main__":
     main()
-    fout = open("output.csv", 'w+')
+    fout = open("a319_ld.csv", 'w+')
     fout.write("AOA,Cl,Cd\n")
     keys = [aoa for aoa in aoas.keys()]
     keys.sort()
