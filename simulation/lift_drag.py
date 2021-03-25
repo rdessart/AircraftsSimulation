@@ -1,5 +1,3 @@
-
-
 class LiftDrag:
 
     def interpolate(self, x, x1, x2, y1, y2):
@@ -52,5 +50,5 @@ class LiftDrag:
 
 
 if __name__ == "__main__":
-    a319 = LiftDrag("./a319_2.csv")
+    a319 = LiftDrag("./data/a319_ld.csv")
     print(a319.get_data(15.35))
