@@ -34,9 +34,9 @@ class Autopilot():
         """
         if self.active_mode != Autopilot.speed_hold:
             self.active_mode = Autopilot.speed_hold
-            Kp = -1.0  # AP 3
-            Ki = 0.01
-            Kd = 0.02
+            Kp = -4.0  # AP 3
+            Ki = -1.0
+            Kd = -2.5
             self.pid = PIDController(Kp, Ki, Kd,
                                      self.pitch_limit['MIN'],
                                      self.pitch_limit['MAX'],
@@ -69,13 +69,14 @@ class Autopilot():
         if self.active_mode != Autopilot.vs_hold:
             self.active_mode = Autopilot.vs_hold
             Kp = 1.0
-            Ki = 0.01
-            Kd = 0.02
+            Ki = 0.1
+            Kd = 0.05
             self.pid = PIDController(Kp, Ki, Kd,
                                      self.pitch_limit['MIN'],
                                      self.pitch_limit['MAX'],
                                      0, 1.0/60.0)
         self.target = target_vs
+        self.pid.compute(self.target, self.target)
         if target_alt is not None:
             self.target_alt = target_alt
 
@@ -92,10 +93,10 @@ class Autopilot():
             Kd = 0.01
             self.pid = PIDController(Kp, Ki, Kd, self.pitch_limit['MIN'],
                                      self.pitch_limit['MAX'],
-                                     altitude_target * aero.ft, dt=1/60)
+                                     0, dt=1/60)
 
         if altitude_target is not None:
-            self.target_alt = altitude_target * aero.ft
+            self.target_alt = altitude_target
 
     def AltitudeAquire(self, altitude_target: float) -> None:
         """[summary]
@@ -105,9 +106,9 @@ class Autopilot():
         """
         if self.active_mode != Autopilot.alt_aquire:
             self.active_mode = Autopilot.alt_aquire
-            Kp = 4.0
-            Ki = 0.0
-            Kd = 4.0
+            Kp = 1.0
+            Ki = 0.1
+            Kd = 0.025
             self.pid = PIDController(Kp, Ki, Kd, self.pitch_limit['MIN'],
                                      self.pitch_limit['MAX'], 0.0, dt=1/60)
 
@@ -115,30 +116,42 @@ class Autopilot():
             altitude: float, pitch: float, mach: float) -> float:
         if self.active_mode is None:
             return None
-        self.pid.limitMin = pitch - 3
-        self.pid.limitMax = pitch + 3
-        if self.pid.limitMin < -15.0:
-            self.pid.limitMin = -15.0
-        if self.pid.limitMax > 15.0:
-            self.pid.limitMax = 15.0
+        self.pid.limitMax = 15.0
+        self.pid.limitMin = -15.0
         target_pitch = None
-        if altitude + (vert_speed * 30) >= self.target_alt\
-                and self.active_mode != Autopilot.alt_aquire\
-                and self.active_mode != Autopilot.alt_hold:
-            self.active_mode = Autopilot.alt_aquire
-            return self.run(cas, vert_speed, altitude, pitch, mach)
+        if self.active_mode not in [Autopilot.alt_aquire, Autopilot.alt_hold]:
+            if altitude < self.target_alt and\
+                    altitude + (vert_speed * 30) >= self.target_alt:
+                self.AltitudeAquire(self.target_alt)
+                return self.run(cas, vert_speed, altitude, pitch, mach)
+            if altitude > self.target_alt and\
+                    altitude + (vert_speed * 30) <= self.target_alt:
+                self.AltitudeAquire(self.target_alt)
+                return self.run(cas, vert_speed, altitude, pitch, mach)
+        # if vert_speed > 0 and altitude + (vert_speed * 30) >= self.target_alt\
+        #         and self.active_mode != Autopilot.alt_aquire\
+        #         and self.active_mode != Autopilot.alt_hold:
+        #     self.active_mode = Autopilot.alt_aquire
+        #     return self.run(cas, vert_speed, altitude, pitch, mach)
+        # if vert_speed < 0 and altitude + (vert_speed * 30) <= self.target_alt\
+        #         and self.active_mode != Autopilot.alt_aquire\
+        #         and self.active_mode != Autopilot.alt_hold:
+        #     self.active_mode = Autopilot.alt_aquire
+        #     return self.run(cas, vert_speed, altitude, pitch, mach)
 
-        elif self.active_mode == Autopilot.speed_hold:
+        if self.active_mode == Autopilot.speed_hold:
             target_pitch = self.pid.compute(self.target, cas)
 
         elif self.active_mode == Autopilot.mach_hold:
             target_pitch = -1 * self.pid.compute(self.target, mach)
 
         elif self.active_mode == Autopilot.vs_hold:
-            target_pitch = self.pid.compute(self.target, vert_speed)
+            # target_pitch = self.pid.compute(self.target, vert_speed)
+            out = self.pid.compute(self.target, vert_speed)
+            target_pitch = (pitch + out) / 2.0
 
         elif self.active_mode == Autopilot.alt_aquire:
-            target_vs = (self.target_alt - altitude) / 60.0
+            target_vs = (self.target_alt - altitude) / 30.0
             target_pitch = self.pid.compute(target_vs, vert_speed)
 
         elif self.active_mode == Autopilot.alt_hold:

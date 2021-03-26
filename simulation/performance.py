@@ -135,7 +135,6 @@ class Performance():
         if self.distance_x == 0:
             self.aoa = self.pitch
         self.cl, self.cd = self.lift_drag.get_data(self.aoa)
-        # print(self.cl, self.cd)
         self.__get_Q()
         self.__change_pitch()
         self.__calculate_drag()
@@ -148,9 +147,6 @@ class Performance():
                                                   alt=self.altitude / aero.ft)
         self.thrust = interpolate(self.thrust_lever, 0.0, 1.0,
                                   idle_thrust, max_thrust)
-        # self.thrust = self.ac_thrust.takeoff(alt=self.altitude / aero.ft,
-        #                                      tas=self.tas / aero.kts)
-        self.thrust *= self.thrust_lever
         fuelflow = self.ac_fuelflow.at_thrust(acthr=self.thrust / 2.0,
                                               alt=self.altitude / aero.ft)
         self.mass -= fuelflow * self.dt * 2
