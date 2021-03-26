@@ -1,9 +1,13 @@
 import socket
 import select
+from threading import Thread
+from simulation.aircraft import Aircraft
+from simulation.aircrafts import Aircrafts
 
 
-class TCPServer():
-    def __init__(self, port):
+class TCPServer(Thread):
+    def __init__(self, port, list_ac: Aircrafts):
+        Thread.__init__(self, name="TCP Server")
         self.port = port
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.setblocking(False)
@@ -11,6 +15,7 @@ class TCPServer():
         self.outputs = []
         self.message_queues = {}
         self.clients = {}
+        self.list_ac = Aircrafts()
 
     def bind(self) -> bool:
         self.sock.bind(("0.0.0.0", self.port))
@@ -25,19 +30,32 @@ class TCPServer():
         if cmds[0] == "CRE":
             # Create AI AIRCRAFT
             try:
-                icao_type, latitude, longitude, *other = cmds[1:]
+                (icao_type, callsign, latitude, longitude, mass, altitude,
+                    cas, takeoff, target_alt, gnd_lvl) = cmds[1:]
             except ValueError:
                 print("Not enought parameters")
                 return [False, "Not enought parameters"]
             try:
                 latitude = float(latitude)
                 longitude = float(longitude)
+                mass = float(mass)
+                altitude = float(altitude)
+                cas = float(cas)
+                takeoff = bool(takeoff)
+                target_alt = float(target_alt)
+                gnd_lvl = float(gnd_lvl)
             except ValueError:
-                print("Latitude and/or longitude are not float")
-                return [False, "Latitude and/or longitude are not float"]
+                print("input(s) are not in the correct format")
+                return [False, "input(s) are not in the correct format"]
             print(f"Creating an {icao_type} at {latitude:02f}°N ",
-                  f"- {longitude:02f}°S")
-            return [True, "Ok"]
+                  f"- {longitude:02f}°E of {mass} kg")
+            acf = Aircraft(icao_type, callsign)
+            self.list_ac.append(acf)
+            return [True, str(acf.id)]
+
+    def send_data(self, data: bytes) -> int:
+        for client in self.clients.keys():
+            client.send(data)
 
     def run(self):
         execute = True

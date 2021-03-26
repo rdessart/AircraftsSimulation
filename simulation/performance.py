@@ -100,6 +100,7 @@ class Performance():
 
         self.lift = self.lift0\
             + (0.5 * self.Q * self.aircraft["WingSpan"] * self.cl)
+        self.lift *= 1.5
 
     def __calculate_drag(self, new: bool = True):
         if self.gear:
